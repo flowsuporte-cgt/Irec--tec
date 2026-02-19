@@ -1,0 +1,1123 @@
+import { useState, useEffect } from "react";
+
+// ─── MOCK DATA ────────────────────────────────────────────────────────────────
+const MOCK_PRODUCTS = [
+  { id: 1, title: "iPhone 15 Pro Max 256GB", category: "Smartphones", price: 8999, sale_price: 7999, stock_qty: 5, barcode: "7891234567890", images_urls: ["https://placehold.co/400x400/1a1a2e/e0e0e0?text=iPhone+15"], is_active: true, description: "Titânio Natural, câmera de 48MP, chip A17 Pro." },
+  { id: 2, title: "Samsung Galaxy S24 Ultra", category: "Smartphones", price: 7499, sale_price: 6899, stock_qty: 2, barcode: "7891234567891", images_urls: ["https://placehold.co/400x400/1a1a2e/e0e0e0?text=Galaxy+S24"], is_active: true, description: "S-Pen integrada, 200MP, 5000mAh." },
+  { id: 3, title: "Cadeira Gamer ThunderX3", category: "Cadeiras Gamer", price: 1499, sale_price: 1199, stock_qty: 8, barcode: "7891234567892", images_urls: ["https://placehold.co/400x400/0d1b2a/e0e0e0?text=ThunderX3"], is_active: true, description: "Couro PU, reclinável 180°, suporte lombar." },
+  { id: 4, title: "Notebook Acer Nitro 5", category: "Notebooks", price: 4299, sale_price: null, stock_qty: 3, barcode: "7891234567893", images_urls: ["https://placehold.co/400x400/1a1a2e/e0e0e0?text=Nitro+5"], is_active: true, description: "RTX 3050, i5 12ª gen, 16GB RAM, 512GB SSD." },
+  { id: 5, title: "AirPods Pro 2ª Geração", category: "Acessórios", price: 1899, sale_price: 1599, stock_qty: 12, barcode: "7891234567894", images_urls: ["https://placehold.co/400x400/1a1a2e/e0e0e0?text=AirPods+Pro"], is_active: true, description: "Cancelamento ativo de ruído, USB-C, 30h bateria." },
+  { id: 6, title: "Monitor LG 27'' 4K IPS", category: "Monitores", price: 2299, sale_price: 1999, stock_qty: 1, barcode: "7891234567895", images_urls: ["https://placehold.co/400x400/0d1b2a/e0e0e0?text=LG+4K"], is_active: true, description: "144Hz, HDR400, USB-C PD 90W." },
+];
+
+const MOCK_ORDERS = [
+  { id: "ORD-001", customer_name: "Maria da Silva", customer_cpf: "123.456.789-00", customer_phone: "74999990001", customer_address: "Rua das Flores, 22, Centro, Irecê-BA, 44900-000", product: "iPhone 15 Pro Max 256GB", total_amount: 7999, shipping_cost: 0, status: "PAGO", payment_method: "Pix", tracking_code: "", created_at: "2025-01-15T10:30:00" },
+  { id: "ORD-002", customer_name: "João Pereira", customer_cpf: "987.654.321-00", customer_phone: "74988880002", customer_address: "Av. Juracy Magalhães, 150, Novo Horizonte, Irecê-BA, 44900-000", product: "Cadeira Gamer ThunderX3", total_amount: 1199, shipping_cost: 25, status: "AGUARDANDO_NF", payment_method: "Cartão", tracking_code: "", created_at: "2025-01-15T11:00:00" },
+  { id: "ORD-003", customer_name: "Ana Souza", customer_cpf: "111.222.333-44", customer_phone: "74977770003", customer_address: "Rua Senador Levindo, 88, São Vicente, Irecê-BA, 44900-000", product: "AirPods Pro 2ª Geração", total_amount: 1599, shipping_cost: 15, status: "ENVIADO", payment_method: "Pix", tracking_code: "BR123456789BR", created_at: "2025-01-14T09:00:00" },
+  { id: "ORD-004", customer_name: "Carlos Melo", customer_cpf: "555.666.777-88", customer_phone: "74966660004", customer_address: "Rua do Comércio, 44, Centro, Lapão-BA, 44895-000", product: "Monitor LG 27'' 4K IPS", total_amount: 1999, shipping_cost: 35, status: "NOVO", payment_method: "Pix", tracking_code: "", created_at: "2025-01-15T14:00:00" },
+  { id: "ORD-005", customer_name: "Fernanda Lima", customer_cpf: "222.333.444-55", customer_phone: "74955550005", customer_address: "Rua Principal, 10, Centro, João Dourado-BA, 44880-000", product: "Samsung Galaxy S24 Ultra", total_amount: 6899, shipping_cost: 20, status: "ENTREGUE", payment_method: "Cartão", tracking_code: "BR987654321BR", created_at: "2025-01-13T08:00:00" },
+];
+
+const STATUS_CONFIG = {
+  NOVO:          { label: "Novo",           color: "#3b82f6", bg: "#1e3a5f" },
+  PAGO:          { label: "Pago",           color: "#22c55e", bg: "#14532d" },
+  AGUARDANDO_NF: { label: "Ag. NF-e",      color: "#f59e0b", bg: "#451a03" },
+  SEPARACAO:     { label: "Separação",      color: "#a855f7", bg: "#3b0764" },
+  ENVIADO:       { label: "Enviado",        color: "#06b6d4", bg: "#083344" },
+  ENTREGUE:      { label: "Entregue",       color: "#84cc16", bg: "#1a2e05" },
+};
+
+const USERS = {
+  admin:      { password: "admin123",    role: "ADMIN",      name: "Ricardo Alves" },
+  logistica:  { password: "log123",      role: "LOGISTICA",  name: "Túlio Santos" },
+  comercial:  { password: "com123",      role: "COMERCIAL",  name: "Beatriz Nunes" },
+  financeiro: { password: "fin123",      role: "FINANCEIRO", name: "Cláudia Costa" },
+};
+
+// ─── STYLES ───────────────────────────────────────────────────────────────────
+const css = `
+  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:       #080c14;
+    --surface:  #0f1621;
+    --card:     #141d2b;
+    --border:   #1e2d42;
+    --accent:   #00d4ff;
+    --accent2:  #ff6b35;
+    --text:     #e8eef7;
+    --muted:    #6b8099;
+    --success:  #22c55e;
+    --danger:   #ef4444;
+    --font-h:   'Syne', sans-serif;
+    --font-b:   'DM Sans', sans-serif;
+  }
+
+  body { background: var(--bg); color: var(--text); font-family: var(--font-b); }
+
+  /* ── SCROLLBAR ── */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* ── ANIMATIONS ── */
+  @keyframes fadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+  @keyframes pulse  { 0%,100% { opacity:1; } 50% { opacity:.5; } }
+  @keyframes glow   { 0%,100% { box-shadow: 0 0 20px rgba(0,212,255,.2); } 50% { box-shadow: 0 0 40px rgba(0,212,255,.5); } }
+  @keyframes spin   { to { transform: rotate(360deg); } }
+
+  .fade-up { animation: fadeUp .4s ease forwards; }
+
+  /* ── BUTTON ── */
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer;
+    font-family: var(--font-b); font-weight: 500; font-size: 14px;
+    transition: all .2s; white-space: nowrap;
+  }
+  .btn-primary { background: var(--accent); color: #000; }
+  .btn-primary:hover { background: #33ddff; transform: translateY(-1px); }
+  .btn-danger  { background: var(--danger); color: #fff; }
+  .btn-danger:hover  { background: #dc2626; }
+  .btn-ghost   { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+  .btn-ghost:hover   { background: var(--card); color: var(--text); }
+  .btn-success { background: var(--success); color: #000; }
+  .btn-orange  { background: var(--accent2); color: #fff; }
+  .btn-orange:hover { background: #ff8c5a; }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+
+  /* ── INPUT ── */
+  .input {
+    width: 100%; padding: 10px 14px; background: var(--bg); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text); font-family: var(--font-b); font-size: 14px;
+    transition: border-color .2s; outline: none;
+  }
+  .input:focus { border-color: var(--accent); }
+  .input::placeholder { color: var(--muted); }
+
+  /* ── BADGE ── */
+  .badge {
+    display: inline-block; padding: 3px 10px; border-radius: 20px;
+    font-size: 11px; font-weight: 600; letter-spacing: .5px;
+  }
+
+  /* ── CARD ── */
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 20px;
+  }
+
+  /* ── MODAL OVERLAY ── */
+  .overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,.7);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 1000; padding: 16px;
+  }
+  .modal {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; padding: 28px; width: 100%; max-width: 560px;
+    max-height: 90vh; overflow-y: auto;
+  }
+
+  /* ── TABLE ── */
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; padding: 12px 16px; font-size: 11px; font-weight: 600;
+       letter-spacing: .8px; color: var(--muted); border-bottom: 1px solid var(--border); }
+  td { padding: 14px 16px; font-size: 13px; border-bottom: 1px solid var(--border); }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,.02); }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    width: 220px; min-height: 100vh; background: var(--surface);
+    border-right: 1px solid var(--border); display: flex; flex-direction: column;
+    position: fixed; left: 0; top: 0;
+  }
+  .sidebar-logo { padding: 24px 20px; border-bottom: 1px solid var(--border); }
+  .sidebar-logo h1 { font-family: var(--font-h); font-size: 18px; font-weight: 800; }
+  .sidebar-logo span { color: var(--accent); }
+  .sidebar-logo p { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px; padding: 11px 20px;
+    cursor: pointer; font-size: 13px; font-weight: 500; color: var(--muted);
+    border-left: 3px solid transparent; transition: all .2s;
+  }
+  .nav-item:hover { color: var(--text); background: rgba(255,255,255,.03); }
+  .nav-item.active { color: var(--accent); border-left-color: var(--accent); background: rgba(0,212,255,.06); }
+  .sidebar-footer { margin-top: auto; padding: 16px 20px; border-top: 1px solid var(--border); }
+
+  /* ── MAIN ── */
+  .main { margin-left: 220px; padding: 32px; min-height: 100vh; }
+  .page-title { font-family: var(--font-h); font-size: 26px; font-weight: 700; margin-bottom: 24px; }
+
+  /* ── STAT CARDS ── */
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; margin-bottom: 28px; }
+  .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+  .stat-card .label { font-size: 11px; color: var(--muted); letter-spacing: .8px; margin-bottom: 8px; }
+  .stat-card .value { font-family: var(--font-h); font-size: 28px; font-weight: 700; }
+  .stat-card .sub   { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+  /* ── PRODUCT GRID (store) ── */
+  .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 20px; }
+  .product-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+    overflow: hidden; cursor: pointer; transition: all .25s;
+  }
+  .product-card:hover { border-color: var(--accent); transform: translateY(-4px); box-shadow: 0 12px 40px rgba(0,212,255,.1); }
+  .product-card img { width: 100%; height: 200px; object-fit: cover; }
+  .product-card .info { padding: 16px; }
+  .product-card .cat { font-size: 10px; color: var(--accent); letter-spacing: 1px; margin-bottom: 6px; }
+  .product-card .name { font-family: var(--font-h); font-size: 14px; font-weight: 600; margin-bottom: 10px; }
+  .product-card .price-row { display: flex; align-items: center; gap: 8px; }
+  .product-card .price { font-size: 18px; font-weight: 700; color: var(--accent); }
+  .product-card .old-price { font-size: 12px; color: var(--muted); text-decoration: line-through; }
+
+  /* ── STORE HEADER ── */
+  .store-header {
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    padding: 0 32px; display: flex; align-items: center; justify-content: space-between;
+    height: 64px; position: sticky; top: 0; z-index: 100;
+  }
+  .store-logo { font-family: var(--font-h); font-size: 20px; font-weight: 800; }
+  .store-logo span { color: var(--accent); }
+  .cart-btn {
+    position: relative; background: var(--card); border: 1px solid var(--border);
+    border-radius: 10px; padding: 8px 14px; cursor: pointer; display: flex;
+    align-items: center; gap: 8px; font-size: 13px; font-weight: 500;
+    color: var(--text); transition: all .2s;
+  }
+  .cart-btn:hover { border-color: var(--accent); }
+  .cart-count {
+    position: absolute; top: -6px; right: -6px; background: var(--accent2);
+    color: #fff; border-radius: 50%; width: 18px; height: 18px;
+    font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center;
+  }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed; bottom: 24px; right: 24px; background: var(--card);
+    border: 1px solid var(--accent); border-radius: 10px; padding: 14px 20px;
+    font-size: 13px; z-index: 2000; animation: fadeUp .3s ease;
+    display: flex; align-items: center; gap: 10px;
+  }
+
+  /* ── LOGIN ── */
+  .login-page {
+    min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    background: radial-gradient(ellipse at 20% 50%, rgba(0,212,255,.08) 0%, transparent 60%),
+                radial-gradient(ellipse at 80% 50%, rgba(255,107,53,.06) 0%, transparent 60%), var(--bg);
+  }
+  .login-box { width: 360px; }
+  .login-box h2 { font-family: var(--font-h); font-size: 28px; font-weight: 800; margin-bottom: 4px; }
+  .login-box p { color: var(--muted); font-size: 13px; margin-bottom: 28px; }
+
+  /* ── CATEGORY FILTERS ── */
+  .cat-filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px; }
+  .cat-chip {
+    padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 500;
+    border: 1px solid var(--border); background: var(--card); color: var(--muted);
+    cursor: pointer; transition: all .2s;
+  }
+  .cat-chip.active { background: var(--accent); color: #000; border-color: var(--accent); }
+
+  /* ── FORM GROUP ── */
+  .form-group { margin-bottom: 16px; }
+  .form-group label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+
+  /* ── PRINT LABEL ── */
+  @media print {
+    body * { visibility: hidden; }
+    #print-area, #print-area * { visibility: visible; }
+    #print-area {
+      position: fixed; left: 0; top: 0; width: 10cm; height: 15cm;
+      background: white; color: black; padding: 12px; font-family: monospace;
+    }
+  }
+
+  /* ── STEP INDICATOR ── */
+  .steps { display: flex; gap: 0; margin-bottom: 28px; }
+  .step {
+    flex: 1; text-align: center; padding: 10px 0; font-size: 12px;
+    border-bottom: 2px solid var(--border); color: var(--muted); font-weight: 500;
+  }
+  .step.active { border-bottom-color: var(--accent); color: var(--accent); }
+  .step.done   { border-bottom-color: var(--success); color: var(--success); }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 768px) {
+    .sidebar { display: none; }
+    .main { margin-left: 0; padding: 16px; }
+    .stats-grid { grid-template-columns: 1fr 1fr; }
+    .store-header { padding: 0 16px; }
+  }
+`;
+
+// ─── HELPERS ──────────────────────────────────────────────────────────────────
+const fmt  = (n) => n?.toLocaleString("pt-BR", { style:"currency", currency:"BRL" });
+const fmtD = (s) => new Date(s).toLocaleDateString("pt-BR", { day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit" });
+
+function Toast({ msg, onClose }) {
+  useEffect(() => { const t = setTimeout(onClose, 3500); return () => clearTimeout(t); }, [onClose]);
+  return <div className="toast">✅ {msg}</div>;
+}
+
+// ─── LOGIN ────────────────────────────────────────────────────────────────────
+function LoginPage({ onLogin, goToStore }) {
+  const [u, setU] = useState(""); const [p, setP] = useState(""); const [err, setErr] = useState("");
+  const handle = () => {
+    const usr = USERS[u.toLowerCase()];
+    if (usr && usr.password === p) { onLogin({ username: u, ...usr }); }
+    else { setErr("Usuário ou senha inválidos."); }
+  };
+  return (
+    <div className="login-page">
+      <div className="login-box fade-up">
+        <div style={{ textAlign:"center", marginBottom:32 }}>
+          <div style={{ fontFamily:"var(--font-h)", fontSize:32, fontWeight:800 }}>
+            IRECÊ<span style={{ color:"var(--accent)" }}>TECH</span>
+          </div>
+          <div style={{ fontSize:12, color:"var(--muted)", marginTop:4 }}>Smart Commerce — Painel de Gestão</div>
+        </div>
+        <div className="card">
+          <h2>Entrar</h2>
+          <p>Acesse com suas credenciais de funcionário</p>
+          <div className="form-group">
+            <label>USUÁRIO</label>
+            <input className="input" placeholder="Ex: admin, logistica…" value={u} onChange={e=>setU(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handle()} />
+          </div>
+          <div className="form-group">
+            <label>SENHA</label>
+            <input className="input" type="password" placeholder="••••••••" value={p} onChange={e=>setP(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handle()} />
+          </div>
+          {err && <div style={{ color:"var(--danger)", fontSize:12, marginBottom:12 }}>{err}</div>}
+          <button className="btn btn-primary" style={{ width:"100%", justifyContent:"center", marginBottom:12 }} onClick={handle}>Entrar no Painel</button>
+          <button className="btn btn-ghost" style={{ width:"100%", justifyContent:"center" }} onClick={goToStore}>🛍️ Ver Loja (cliente)</button>
+        </div>
+        <div style={{ marginTop:16, padding:12, background:"rgba(0,212,255,.06)", borderRadius:10, fontSize:11, color:"var(--muted)", lineHeight:1.8 }}>
+          <strong style={{ color:"var(--accent)" }}>Credenciais de demonstração:</strong><br/>
+          admin / admin123 &nbsp;|&nbsp; logistica / log123<br/>
+          comercial / com123 &nbsp;|&nbsp; financeiro / fin123
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── ADMIN LAYOUT ─────────────────────────────────────────────────────────────
+const NAV_BY_ROLE = {
+  ADMIN:      ["dashboard","pedidos","produtos","usuarios","financeiro","configuracoes"],
+  LOGISTICA:  ["pedidos_log"],
+  COMERCIAL:  ["catalogo","cupons"],
+  FINANCEIRO: ["financeiro"],
+};
+const NAV_LABELS = {
+  dashboard:     { icon:"📊", label:"Dashboard" },
+  pedidos:       { icon:"📦", label:"Pedidos" },
+  pedidos_log:   { icon:"📦", label:"Pedidos & Logística" },
+  produtos:      { icon:"🏷️",  label:"Produtos" },
+  catalogo:      { icon:"🏷️",  label:"Catálogo" },
+  cupons:        { icon:"🎟️",  label:"Cupons" },
+  usuarios:      { icon:"👥", label:"Usuários" },
+  financeiro:    { icon:"💰", label:"Financeiro" },
+  configuracoes: { icon:"⚙️",  label:"Configurações" },
+};
+
+function AdminLayout({ user, onLogout, goToStore }) {
+  const tabs = NAV_BY_ROLE[user.role] || [];
+  const [active, setActive] = useState(tabs[0]);
+  const [toast, setToast] = useState(null);
+  const showToast = (m) => setToast(m);
+
+  return (
+    <div style={{ display:"flex" }}>
+      <aside className="sidebar">
+        <div className="sidebar-logo">
+          <h1>IRECÊ<span>TECH</span></h1>
+          <p>{user.role} • {user.name}</p>
+        </div>
+        <nav style={{ padding:"12px 0", flex:1 }}>
+          {tabs.map(t => (
+            <div key={t} className={`nav-item ${active===t?"active":""}`} onClick={()=>setActive(t)}>
+              {NAV_LABELS[t]?.icon} {NAV_LABELS[t]?.label}
+            </div>
+          ))}
+          <div className="nav-item" onClick={goToStore}>🛍️ Ver Loja</div>
+        </nav>
+        <div className="sidebar-footer">
+          <button className="btn btn-ghost" style={{ width:"100%", justifyContent:"center", fontSize:12 }} onClick={onLogout}>↩ Sair</button>
+        </div>
+      </aside>
+      <main className="main">
+        {active==="dashboard"   && <DashboardPage showToast={showToast} />}
+        {(active==="pedidos"||active==="pedidos_log") && <PedidosPage role={user.role} showToast={showToast} />}
+        {(active==="produtos"||active==="catalogo") && <ProdutosPage showToast={showToast} />}
+        {active==="usuarios"    && <UsuariosPage showToast={showToast} />}
+        {active==="financeiro"  && <FinanceiroPage showToast={showToast} />}
+        {active==="cupons"      && <CuponsPage showToast={showToast} />}
+        {active==="configuracoes" && <ConfigPage showToast={showToast} />}
+      </main>
+      {toast && <Toast msg={toast} onClose={()=>setToast(null)} />}
+    </div>
+  );
+}
+
+// ─── DASHBOARD ────────────────────────────────────────────────────────────────
+function DashboardPage() {
+  const total = MOCK_ORDERS.reduce((a,o)=>a+o.total_amount,0);
+  const hoje  = MOCK_ORDERS.filter(o=>o.status==="PAGO"||o.status==="NOVO");
+  const criticos = MOCK_PRODUCTS.filter(p=>p.stock_qty<3);
+  const novos = MOCK_ORDERS.filter(o=>o.status==="NOVO").length;
+
+  return (
+    <div className="fade-up">
+      <div className="page-title">Dashboard</div>
+      <div className="stats-grid">
+        <div className="stat-card" style={{ borderColor:"rgba(0,212,255,.3)" }}>
+          <div className="label">💰 FATURAMENTO TOTAL</div>
+          <div className="value" style={{ color:"var(--accent)" }}>{fmt(total)}</div>
+          <div className="sub">Todos os pedidos</div>
+        </div>
+        <div className="stat-card">
+          <div className="label">📦 PEDIDOS NOVOS</div>
+          <div className="value" style={{ color:"#3b82f6" }}>{novos}</div>
+          <div className="sub">Aguardando ação</div>
+        </div>
+        <div className="stat-card" style={{ borderColor: criticos.length?"rgba(239,68,68,.4)":"" }}>
+          <div className="label">⚠️ ESTOQUE CRÍTICO</div>
+          <div className="value" style={{ color: criticos.length?"var(--danger)":"var(--success)" }}>{criticos.length}</div>
+          <div className="sub">{criticos.map(p=>p.title.split(" ").slice(0,2).join(" ")).join(", ")||"Tudo em ordem"}</div>
+        </div>
+        <div className="stat-card">
+          <div className="label">🛍️ TOTAL DE PRODUTOS</div>
+          <div className="value">{MOCK_PRODUCTS.length}</div>
+          <div className="sub">Ativos no catálogo</div>
+        </div>
+      </div>
+
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:20 }}>
+        <div className="card">
+          <div style={{ fontFamily:"var(--font-h)", fontWeight:700, marginBottom:16 }}>Últimos Pedidos</div>
+          {MOCK_ORDERS.slice(0,4).map(o=>(
+            <div key={o.id} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"10px 0", borderBottom:"1px solid var(--border)" }}>
+              <div>
+                <div style={{ fontSize:13, fontWeight:500 }}>{o.customer_name}</div>
+                <div style={{ fontSize:11, color:"var(--muted)" }}>{o.product.split(" ").slice(0,3).join(" ")}</div>
+              </div>
+              <div style={{ textAlign:"right" }}>
+                <div style={{ fontSize:13, fontWeight:600, color:"var(--accent)" }}>{fmt(o.total_amount)}</div>
+                <StatusBadge s={o.status} />
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="card">
+          <div style={{ fontFamily:"var(--font-h)", fontWeight:700, marginBottom:16 }}>Estoque por Categoria</div>
+          {["Smartphones","Cadeiras Gamer","Notebooks","Acessórios","Monitores"].map(cat=>{
+            const prods = MOCK_PRODUCTS.filter(p=>p.category===cat);
+            const total = prods.reduce((a,p)=>a+p.stock_qty,0);
+            const pct = Math.min(100, (total/30)*100);
+            return (
+              <div key={cat} style={{ marginBottom:14 }}>
+                <div style={{ display:"flex", justifyContent:"space-between", fontSize:12, marginBottom:4 }}>
+                  <span>{cat}</span><span style={{ color:"var(--muted)" }}>{total} un.</span>
+                </div>
+                <div style={{ height:6, background:"var(--border)", borderRadius:3 }}>
+                  <div style={{ height:"100%", width:`${pct}%`, background: total<5?"var(--danger)":"var(--accent)", borderRadius:3, transition:"width .5s" }} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── STATUS BADGE ─────────────────────────────────────────────────────────────
+function StatusBadge({ s }) {
+  const c = STATUS_CONFIG[s] || { label:s, color:"#888", bg:"#333" };
+  return <span className="badge" style={{ background:c.bg, color:c.color }}>{c.label}</span>;
+}
+
+// ─── PEDIDOS ──────────────────────────────────────────────────────────────────
+function PedidosPage({ role }) {
+  const [orders, setOrders] = useState(MOCK_ORDERS);
+  const [sel, setSel]       = useState(null);
+  const [track, setTrack]   = useState("");
+  const [copied, setCopied] = useState(false);
+  const [filter, setFilter] = useState("TODOS");
+
+  const filtered = filter==="TODOS" ? orders : orders.filter(o=>o.status===filter);
+
+  const updateStatus = (id, status) => {
+    setOrders(prev => prev.map(o => o.id===id ? {...o, status, tracking_code: track||o.tracking_code} : o));
+    setSel(prev => prev ? {...prev, status, tracking_code: track||prev.tracking_code} : null);
+  };
+
+  const copyNFe = (o) => {
+    const txt = `Nome: ${o.customer_name}\nCPF: ${o.customer_cpf}\nEndereço: ${o.customer_address}\nProduto: ${o.product}\nValor: ${fmt(o.total_amount)}\nFrete: ${fmt(o.shipping_cost)}`;
+    navigator.clipboard?.writeText(txt);
+    setCopied(true); setTimeout(()=>setCopied(false), 2500);
+  };
+
+  const printLabel = (o) => {
+    const win = window.open("","_blank","width=400,height=600");
+    win.document.write(`<html><body style="font-family:monospace;padding:20px;width:280px">
+      <div style="border:2px solid #000;padding:16px;border-radius:4px">
+        <div style="text-align:center;font-size:20px;font-weight:bold;margin-bottom:12px">📦 IRECÊTECH</div>
+        <hr/><p style="margin:8px 0"><strong>DESTINATÁRIO:</strong></p>
+        <p style="font-size:16px;font-weight:bold">${o.customer_name}</p>
+        <p>${o.customer_address}</p>
+        <hr/><p><strong>PEDIDO:</strong> ${o.id}</p>
+        <p><strong>PRODUTO:</strong> ${o.product}</p>
+        ${o.tracking_code?`<p><strong>RASTREIO:</strong> ${o.tracking_code}</p>`:""}
+        <div style="text-align:center;margin-top:16px;font-size:32px">▓▓▓▓▓▓</div>
+      </div>
+    </body></html>`);
+    win.document.close(); win.print();
+  };
+
+  const sendWhatsApp = (o) => {
+    const msg = encodeURIComponent(`Olá ${o.customer_name}! Seu pedido de *${o.product}* foi enviado. Rastreio: ${o.tracking_code||"em breve"}. Obrigado pela compra na IrecêTech! 🚀`);
+    const num = o.customer_phone.replace(/\D/g,"");
+    window.open(`https://wa.me/55${num}?text=${msg}`,"_blank");
+  };
+
+  return (
+    <div className="fade-up">
+      <div className="page-title">📦 Pedidos</div>
+      <div style={{ display:"flex", gap:8, marginBottom:20, flexWrap:"wrap" }}>
+        {["TODOS","NOVO","PAGO","AGUARDANDO_NF","SEPARACAO","ENVIADO","ENTREGUE"].map(s=>(
+          <button key={s} className={`btn ${filter===s?"btn-primary":"btn-ghost"}`} style={{ fontSize:12, padding:"6px 14px" }} onClick={()=>setFilter(s)}>
+            {s==="TODOS"?"Todos":STATUS_CONFIG[s]?.label||s}
+          </button>
+        ))}
+      </div>
+
+      <div className="card" style={{ padding:0 }}>
+        <table>
+          <thead>
+            <tr><th>PEDIDO</th><th>CLIENTE</th><th>PRODUTO</th><th>VALOR</th><th>STATUS</th><th>DATA</th><th></th></tr>
+          </thead>
+          <tbody>
+            {filtered.map(o=>(
+              <tr key={o.id}>
+                <td><code style={{ color:"var(--accent)", fontSize:12 }}>{o.id}</code></td>
+                <td>
+                  <div style={{ fontWeight:500 }}>{o.customer_name}</div>
+                  <div style={{ fontSize:11, color:"var(--muted)" }}>{o.customer_phone}</div>
+                </td>
+                <td style={{ fontSize:12, color:"var(--muted)" }}>{o.product.split(" ").slice(0,3).join(" ")}</td>
+                <td style={{ fontWeight:600, color:"var(--accent)" }}>{fmt(o.total_amount)}</td>
+                <td><StatusBadge s={o.status} /></td>
+                <td style={{ fontSize:11, color:"var(--muted)" }}>{fmtD(o.created_at)}</td>
+                <td><button className="btn btn-ghost" style={{ fontSize:11, padding:"5px 10px" }} onClick={()=>{setSel(o);setTrack("");}}>Ver</button></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {sel && (
+        <div className="overlay" onClick={e=>e.target===e.currentTarget&&setSel(null)}>
+          <div className="modal">
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"start", marginBottom:20 }}>
+              <div>
+                <div style={{ fontFamily:"var(--font-h)", fontSize:20, fontWeight:700 }}>{sel.id}</div>
+                <div style={{ fontSize:12, color:"var(--muted)" }}>{fmtD(sel.created_at)}</div>
+              </div>
+              <StatusBadge s={sel.status} />
+            </div>
+
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:20 }}>
+              {[
+                ["Cliente", sel.customer_name],
+                ["CPF/CNPJ", sel.customer_cpf],
+                ["WhatsApp", sel.customer_phone],
+                ["Pagamento", sel.payment_method],
+                ["Total", fmt(sel.total_amount)],
+                ["Frete", fmt(sel.shipping_cost)],
+              ].map(([k,v])=>(
+                <div key={k} style={{ background:"var(--bg)", borderRadius:8, padding:10 }}>
+                  <div style={{ fontSize:10, color:"var(--muted)", marginBottom:2 }}>{k}</div>
+                  <div style={{ fontSize:13, fontWeight:500 }}>{v}</div>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ background:"var(--bg)", borderRadius:8, padding:10, marginBottom:16 }}>
+              <div style={{ fontSize:10, color:"var(--muted)", marginBottom:4 }}>ENDEREÇO DE ENTREGA</div>
+              <div style={{ fontSize:13 }}>{sel.customer_address}</div>
+            </div>
+
+            <div style={{ background:"rgba(0,212,255,.06)", border:"1px solid rgba(0,212,255,.2)", borderRadius:8, padding:12, marginBottom:20 }}>
+              <div style={{ fontSize:11, color:"var(--accent)", marginBottom:6 }}>📦 PRODUTO</div>
+              <div style={{ fontWeight:600 }}>{sel.product}</div>
+            </div>
+
+            {/* AÇÕES POR STATUS */}
+            <div style={{ display:"grid", gap:10 }}>
+              {(role==="ADMIN"||role==="LOGISTICA") && <>
+                <button className="btn btn-orange" style={{ justifyContent:"center" }} onClick={()=>printLabel(sel)}>
+                  🖨️ Imprimir Etiqueta de Envio (10×15cm)
+                </button>
+                {sel.status==="PAGO" && (
+                  <button className="btn btn-primary" style={{ justifyContent:"center" }} onClick={()=>updateStatus(sel.id,"SEPARACAO")}>
+                    ✅ Confirmar Separação
+                  </button>
+                )}
+                {sel.status==="SEPARACAO" && <>
+                  <div style={{ display:"flex", gap:8 }}>
+                    <input className="input" placeholder="Código de rastreio (ex: BR123456789BR)" value={track} onChange={e=>setTrack(e.target.value)} />
+                  </div>
+                  <button className="btn btn-success" style={{ justifyContent:"center" }} onClick={()=>updateStatus(sel.id,"ENVIADO")}>
+                    🚚 Marcar como Enviado
+                  </button>
+                </>}
+                {sel.status==="ENVIADO" && (
+                  <button className="btn btn-success" style={{ justifyContent:"center" }} onClick={()=>sendWhatsApp(sel)}>
+                    💬 Enviar Status via WhatsApp
+                  </button>
+                )}
+              </>}
+
+              {(role==="ADMIN"||role==="FINANCEIRO") && (
+                <button className="btn" style={{ justifyContent:"center", background: copied?"var(--success)":"var(--card)", color: copied?"#000":"var(--text)", border:"1px solid var(--border)" }} onClick={()=>copyNFe(sel)}>
+                  {copied ? "✅ Dados Copiados!" : "📋 Copiar Dados para NF-e"}
+                </button>
+              )}
+
+              {role==="ADMIN" && sel.status==="NOVO" && (
+                <button className="btn btn-primary" style={{ justifyContent:"center" }} onClick={()=>updateStatus(sel.id,"PAGO")}>
+                  💰 Confirmar Pagamento
+                </button>
+              )}
+            </div>
+
+            <button className="btn btn-ghost" style={{ width:"100%", justifyContent:"center", marginTop:16 }} onClick={()=>setSel(null)}>Fechar</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── PRODUTOS ─────────────────────────────────────────────────────────────────
+function ProdutosPage({ showToast }) {
+  const [produtos, setProdutos] = useState(MOCK_PRODUCTS);
+  const [modal, setModal]       = useState(false);
+  const [form, setForm]         = useState({ title:"", category:"Smartphones", price:"", sale_price:"", stock_qty:"", barcode:"", description:"" });
+
+  const save = () => {
+    setProdutos(prev => [...prev, { ...form, id: Date.now(), price: +form.price, sale_price: form.sale_price?+form.sale_price:null, stock_qty: +form.stock_qty, images_urls: [`https://placehold.co/400x400/1a1a2e/e0e0e0?text=${encodeURIComponent(form.title.split(" ")[0])}`], is_active:true }]);
+    setModal(false); showToast("Produto cadastrado com sucesso!");
+  };
+
+  const toggle = (id) => {
+    setProdutos(prev => prev.map(p => p.id===id ? {...p, is_active:!p.is_active} : p));
+  };
+
+  return (
+    <div className="fade-up">
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:24 }}>
+        <div className="page-title" style={{ margin:0 }}>🏷️ Produtos</div>
+        <button className="btn btn-primary" onClick={()=>setModal(true)}>+ Novo Produto</button>
+      </div>
+
+      <div className="card" style={{ padding:0 }}>
+        <table>
+          <thead>
+            <tr><th>PRODUTO</th><th>CATEGORIA</th><th>PREÇO</th><th>ESTOQUE</th><th>CÓDIGO</th><th>STATUS</th><th></th></tr>
+          </thead>
+          <tbody>
+            {produtos.map(p=>(
+              <tr key={p.id}>
+                <td>
+                  <div style={{ fontWeight:500, fontSize:13 }}>{p.title}</div>
+                  <div style={{ fontSize:11, color:"var(--muted)" }}>{p.description?.slice(0,40)}…</div>
+                </td>
+                <td><span className="badge" style={{ background:"rgba(0,212,255,.1)", color:"var(--accent)" }}>{p.category}</span></td>
+                <td>
+                  <div style={{ fontWeight:600 }}>{fmt(p.sale_price||p.price)}</div>
+                  {p.sale_price && <div style={{ fontSize:11, color:"var(--muted)", textDecoration:"line-through" }}>{fmt(p.price)}</div>}
+                </td>
+                <td>
+                  <span style={{ color: p.stock_qty<3?"var(--danger)": p.stock_qty<6?"#f59e0b":"var(--success)", fontWeight:600 }}>
+                    {p.stock_qty} un.
+                  </span>
+                  {p.stock_qty<3 && <span style={{ marginLeft:6, fontSize:10, color:"var(--danger)" }}>⚠️</span>}
+                </td>
+                <td><code style={{ fontSize:11, color:"var(--muted)" }}>{p.barcode}</code></td>
+                <td><StatusToggle active={p.is_active} onToggle={()=>toggle(p.id)} /></td>
+                <td>
+                  <button className="btn btn-ghost" style={{ fontSize:11, padding:"4px 10px" }} onClick={()=>{ setForm({...p, sale_price: p.sale_price||""}); setModal(true); }}>Editar</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {modal && (
+        <div className="overlay" onClick={e=>e.target===e.currentTarget&&setModal(false)}>
+          <div className="modal">
+            <div style={{ fontFamily:"var(--font-h)", fontSize:20, fontWeight:700, marginBottom:20 }}>Novo Produto</div>
+            {[
+              ["Título",      "title",       "text",   "iPhone 15 Pro Max 256GB"],
+              ["Preço (R$)",  "price",       "number", "7999"],
+              ["Promoção (R$)","sale_price", "number", "Deixe vazio se não houver"],
+              ["Estoque",     "stock_qty",   "number", "10"],
+              ["Código EAN",  "barcode",     "text",   "7891234567890"],
+            ].map(([l,k,t,ph])=>(
+              <div key={k} className="form-group">
+                <label>{l}</label>
+                <input className="input" type={t} placeholder={ph} value={form[k]||""} onChange={e=>setForm(f=>({...f,[k]:e.target.value}))} />
+              </div>
+            ))}
+            <div className="form-group">
+              <label>CATEGORIA</label>
+              <select className="input" value={form.category} onChange={e=>setForm(f=>({...f,category:e.target.value}))}>
+                {["Smartphones","Cadeiras Gamer","Notebooks","Acessórios","Monitores"].map(c=><option key={c}>{c}</option>)}
+              </select>
+            </div>
+            <div className="form-group">
+              <label>DESCRIÇÃO</label>
+              <textarea className="input" rows={3} value={form.description||""} onChange={e=>setForm(f=>({...f,description:e.target.value}))} style={{ resize:"vertical" }} />
+            </div>
+            <div style={{ display:"flex", gap:10 }}>
+              <button className="btn btn-primary" style={{ flex:1, justifyContent:"center" }} onClick={save}>Salvar Produto</button>
+              <button className="btn btn-ghost" style={{ flex:1, justifyContent:"center" }} onClick={()=>setModal(false)}>Cancelar</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StatusToggle({ active, onToggle }) {
+  return (
+    <div onClick={onToggle} style={{ display:"inline-flex", alignItems:"center", gap:6, cursor:"pointer" }}>
+      <div style={{ width:36, height:20, borderRadius:10, background: active?"var(--success)":"var(--border)", position:"relative", transition:"background .2s" }}>
+        <div style={{ position:"absolute", top:3, left: active?18:3, width:14, height:14, borderRadius:50%, background:"#fff", transition:"left .2s" }} />
+      </div>
+      <span style={{ fontSize:12, color: active?"var(--success)":"var(--muted)" }}>{active?"Ativo":"Inativo"}</span>
+    </div>
+  );
+}
+
+// ─── USUÁRIOS ─────────────────────────────────────────────────────────────────
+function UsuariosPage({ showToast }) {
+  const [users] = useState(Object.entries(USERS).map(([u,v])=>({ username:u, ...v, active:true })));
+  return (
+    <div className="fade-up">
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:24 }}>
+        <div className="page-title" style={{ margin:0 }}>👥 Usuários</div>
+        <button className="btn btn-primary" onClick={()=>showToast("Em produção: conecte ao Supabase Auth!")}>+ Novo Usuário</button>
+      </div>
+      <div className="card" style={{ padding:0 }}>
+        <table>
+          <thead><tr><th>NOME</th><th>USUÁRIO</th><th>CARGO</th><th>ACESSO</th></tr></thead>
+          <tbody>
+            {users.map(u=>(
+              <tr key={u.username}>
+                <td style={{ fontWeight:500 }}>{u.name}</td>
+                <td><code style={{ color:"var(--accent)", fontSize:12 }}>{u.username}</code></td>
+                <td>
+                  <span className="badge" style={{ background: u.role==="ADMIN"?"rgba(239,68,68,.15)":"rgba(0,212,255,.1)", color: u.role==="ADMIN"?"var(--danger)":"var(--accent)" }}>{u.role}</span>
+                </td>
+                <td><StatusToggle active={u.active} onToggle={()=>showToast("Atualizado!")} /></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div style={{ marginTop:16, padding:14, background:"rgba(0,212,255,.06)", borderRadius:10, fontSize:12, color:"var(--muted)" }}>
+        💡 Em produção: esta tela se conecta ao Supabase Auth. Cada usuário criado aqui recebe um e-mail de convite e só acessa as telas do seu cargo.
+      </div>
+    </div>
+  );
+}
+
+// ─── FINANCEIRO ───────────────────────────────────────────────────────────────
+function FinanceiroPage({ showToast }) {
+  const total = MOCK_ORDERS.reduce((a,o)=>a+o.total_amount,0);
+  const [copied, setCopied] = useState(null);
+
+  const copyNFe = (o) => {
+    const txt = `Nome: ${o.customer_name}\nCPF: ${o.customer_cpf}\nEndereço: ${o.customer_address}\nProduto: ${o.product}\nValor: ${fmt(o.total_amount)}\nFrete: ${fmt(o.shipping_cost)}`;
+    navigator.clipboard?.writeText(txt);
+    setCopied(o.id); setTimeout(()=>setCopied(null), 2000);
+  };
+
+  const exportCSV = () => {
+    const rows = [["Pedido","Cliente","CPF","Produto","Valor","Frete","Status","Data"],...MOCK_ORDERS.map(o=>[o.id,o.customer_name,o.customer_cpf,o.product,o.total_amount,o.shipping_cost,o.status,fmtD(o.created_at)])];
+    const csv = rows.map(r=>r.join(";")).join("\n");
+    const a = document.createElement("a"); a.href = "data:text/csv;charset=utf-8,"+encodeURIComponent(csv); a.download="relatorio-irecêtech.csv"; a.click();
+    showToast("CSV exportado!");
+  };
+
+  return (
+    <div className="fade-up">
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:24 }}>
+        <div className="page-title" style={{ margin:0 }}>💰 Financeiro</div>
+        <button className="btn btn-success" onClick={exportCSV}>⬇️ Exportar CSV</button>
+      </div>
+      <div className="stats-grid" style={{ marginBottom:24 }}>
+        <div className="stat-card" style={{ borderColor:"rgba(34,197,94,.3)" }}>
+          <div className="label">TOTAL FATURADO</div>
+          <div className="value" style={{ color:"var(--success)" }}>{fmt(total)}</div>
+        </div>
+        <div className="stat-card">
+          <div className="label">TICKET MÉDIO</div>
+          <div className="value">{fmt(total/MOCK_ORDERS.length)}</div>
+        </div>
+        <div className="stat-card">
+          <div className="label">PEDIDOS ENTREGUES</div>
+          <div className="value">{MOCK_ORDERS.filter(o=>o.status==="ENTREGUE").length}</div>
+        </div>
+      </div>
+
+      <div className="card" style={{ padding:0 }}>
+        <table>
+          <thead><tr><th>PEDIDO</th><th>CLIENTE / CPF</th><th>PRODUTO</th><th>VALOR</th><th>STATUS</th><th>DADOS NF-e</th></tr></thead>
+          <tbody>
+            {MOCK_ORDERS.map(o=>(
+              <tr key={o.id}>
+                <td><code style={{ fontSize:12, color:"var(--accent)" }}>{o.id}</code></td>
+                <td>
+                  <div style={{ fontWeight:500, fontSize:13 }}>{o.customer_name}</div>
+                  <div style={{ fontSize:11, color:"var(--muted)" }}>{o.customer_cpf}</div>
+                </td>
+                <td style={{ fontSize:12 }}>{o.product.split(" ").slice(0,3).join(" ")}</td>
+                <td style={{ fontWeight:600 }}>{fmt(o.total_amount)}</td>
+                <td><StatusBadge s={o.status} /></td>
+                <td>
+                  <button className="btn" style={{ fontSize:11, padding:"5px 10px", background: copied===o.id?"var(--success)":"var(--card)", color: copied===o.id?"#000":"var(--text)", border:"1px solid var(--border)" }} onClick={()=>copyNFe(o)}>
+                    {copied===o.id?"✅ Copiado!":"📋 Copiar"}
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ─── CUPONS ───────────────────────────────────────────────────────────────────
+function CuponsPage({ showToast }) {
+  const [cupons, setCupons] = useState([
+    { id:1, code:"IRECE10", discount:10, type:"%", expires:"2025-03-31", active:true },
+    { id:2, code:"FRETEGRATIS", discount:100, type:"R$", expires:"2025-02-28", active:true },
+  ]);
+  const [form, setForm] = useState({ code:"", discount:"", type:"%", expires:"" });
+
+  return (
+    <div className="fade-up">
+      <div className="page-title">🎟️ Cupons de Desconto</div>
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:20, marginBottom:24 }}>
+        <div className="card">
+          <div style={{ fontWeight:600, marginBottom:14 }}>Novo Cupom</div>
+          {[["Código","code","text","PROMO-IRECE"],["Desconto","discount","number","10"],["Validade","expires","date",""]].map(([l,k,t,ph])=>(
+            <div key={k} className="form-group">
+              <label>{l}</label>
+              <input className="input" type={t} placeholder={ph} value={form[k]} onChange={e=>setForm(f=>({...f,[k]:e.target.value}))} />
+            </div>
+          ))}
+          <div className="form-group">
+            <label>TIPO</label>
+            <select className="input" value={form.type} onChange={e=>setForm(f=>({...f,type:e.target.value}))}>
+              <option value="%">Percentual (%)</option>
+              <option value="R$">Valor Fixo (R$)</option>
+            </select>
+          </div>
+          <button className="btn btn-primary" style={{ width:"100%", justifyContent:"center" }} onClick={()=>{ setCupons(prev=>[...prev,{...form,id:Date.now(),active:true}]); setForm({code:"",discount:"",type:"%",expires:""}); showToast("Cupom criado!"); }}>Criar Cupom</button>
+        </div>
+        <div className="card" style={{ padding:0 }}>
+          <table>
+            <thead><tr><th>CÓDIGO</th><th>DESCONTO</th><th>VALIDADE</th><th>ATIVO</th></tr></thead>
+            <tbody>
+              {cupons.map(c=>(
+                <tr key={c.id}>
+                  <td><code style={{ color:"var(--accent2)", fontWeight:700 }}>{c.code}</code></td>
+                  <td>{c.discount}{c.type}</td>
+                  <td style={{ fontSize:12, color:"var(--muted)" }}>{c.expires||"Sem validade"}</td>
+                  <td><StatusToggle active={c.active} onToggle={()=>{ setCupons(prev=>prev.map(x=>x.id===c.id?{...x,active:!x.active}:x)); }} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── CONFIG ───────────────────────────────────────────────────────────────────
+function ConfigPage({ showToast }) {
+  const [cfg, setCfg] = useState({ store_name:"IrecêTech", whatsapp:"74999990000", frete_irece:"0", frete_regiao:"25", frete_outro:"45" });
+  return (
+    <div className="fade-up">
+      <div className="page-title">⚙️ Configurações</div>
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:20 }}>
+        <div className="card">
+          <div style={{ fontWeight:600, marginBottom:14 }}>Dados da Loja</div>
+          {[["Nome da Loja","store_name"],["WhatsApp","whatsapp"]].map(([l,k])=>(
+            <div key={k} className="form-group">
+              <label>{l}</label>
+              <input className="input" value={cfg[k]} onChange={e=>setCfg(c=>({...c,[k]:e.target.value}))} />
+            </div>
+          ))}
+          <button className="btn btn-primary" style={{ width:"100%", justifyContent:"center" }} onClick={()=>showToast("Configurações salvas!")}>Salvar</button>
+        </div>
+        <div className="card">
+          <div style={{ fontWeight:600, marginBottom:14 }}>Regras de Frete</div>
+          {[["Irecê (R$)","frete_irece"],["Região (Lapão, J.Dourado)","frete_regiao"],["Outras cidades","frete_outro"]].map(([l,k])=>(
+            <div key={k} className="form-group">
+              <label>{l}</label>
+              <input className="input" type="number" value={cfg[k]} onChange={e=>setCfg(c=>({...c,[k]:e.target.value}))} />
+            </div>
+          ))}
+          <button className="btn btn-primary" style={{ width:"100%", justifyContent:"center" }} onClick={()=>showToast("Fretes atualizados!")}>Salvar</button>
+        </div>
+      </div>
+      <div style={{ marginTop:16, padding:14, background:"rgba(255,107,53,.06)", borderRadius:10, fontSize:12, color:"var(--muted)" }}>
+        🔗 <strong style={{ color:"var(--accent2)" }}>Integração Supabase:</strong> Em produção, configure aqui as chaves <code>SUPABASE_URL</code> e <code>SUPABASE_ANON_KEY</code> para ativar o banco de dados real.
+      </div>
+    </div>
+  );
+}
+
+// ─── STORE (LOJA DO CLIENTE) ──────────────────────────────────────────────────
+function StorePage({ goToAdmin }) {
+  const [cat, setCat]       = useState("Todos");
+  const [cart, setCart]     = useState([]);
+  const [search, setSearch] = useState("");
+  const [view, setView]     = useState("store"); // store | product | cart | checkout | success
+  const [selProd, setSelProd] = useState(null);
+  const [form, setForm]     = useState({ name:"", cpf:"", phone:"", zip:"", street:"", number:"", complement:"", city:"Irecê", state:"BA" });
+  const [orderNum, setOrderNum] = useState(null);
+  const [step, setStep]     = useState(1);
+  const [toast, setToast]   = useState(null);
+  const cats = ["Todos", ...new Set(MOCK_PRODUCTS.map(p=>p.category))];
+
+  const filtered = MOCK_PRODUCTS.filter(p => p.is_active && (cat==="Todos"||p.category===cat) && (!search||p.title.toLowerCase().includes(search.toLowerCase())));
+  const cartTotal = cart.reduce((a,i)=>a+(i.sale_price||i.price)*i.qty,0);
+  const addToCart = (p) => {
+    setCart(prev => { const ex = prev.find(i=>i.id===p.id); return ex ? prev.map(i=>i.id===p.id?{...i,qty:i.qty+1}:i) : [...prev,{...p,qty:1}]; });
+    setToast(`${p.title.split(" ").slice(0,2).join(" ")} adicionado!`);
+  };
+  const finalize = () => {
+    const num = "ORD-" + Date.now().toString().slice(-4); setOrderNum(num);
+    setView("success"); setCart([]);
+  };
+
+  return (
+    <div style={{ minHeight:"100vh" }}>
+      <header className="store-header">
+        <div className="store-logo">IRECÊ<span>TECH</span></div>
+        <div style={{ display:"flex", gap:12, alignItems:"center" }}>
+          <input className="input" style={{ width:220 }} placeholder="🔍 Buscar produto…" value={search} onChange={e=>setSearch(e.target.value)} />
+          {view!=="cart"&&view!=="checkout"&&view!=="success" && (
+            <div className="cart-btn" onClick={()=>setView("cart")}>
+              🛒 Carrinho {cart.length>0 && <span className="cart-count">{cart.reduce((a,i)=>a+i.qty,0)}</span>}
+            </div>
+          )}
+          <button className="btn btn-ghost" style={{ fontSize:12 }} onClick={goToAdmin}>⚙️ Painel</button>
+        </div>
+      </header>
+
+      {/* STORE GRID */}
+      {view==="store" && (
+        <div style={{ padding:"28px 32px" }} className="fade-up">
+          <div className="cat-filters">
+            {cats.map(c=><div key={c} className={`cat-chip ${cat===c?"active":""}`} onClick={()=>setCat(c)}>{c}</div>)}
+          </div>
+          <div className="product-grid">
+            {filtered.map(p=>(
+              <div key={p.id} className="product-card" onClick={()=>{setSelProd(p);setView("product");}}>
+                <img src={p.images_urls[0]} alt={p.title} />
+                <div className="info">
+                  <div className="cat">{p.category.toUpperCase()}</div>
+                  <div className="name">{p.title}</div>
+                  {p.stock_qty < 3 && <div style={{ fontSize:10, color:"var(--danger)", marginBottom:6 }}>⚠️ Últimas {p.stock_qty} unidades!</div>}
+                  <div className="price-row">
+                    <span className="price">{fmt(p.sale_price||p.price)}</span>
+                    {p.sale_price && <span className="old-price">{fmt(p.price)}</span>}
+                  </div>
+                  {p.sale_price && <div style={{ fontSize:11, color:"#22c55e", marginTop:4 }}>💚 Economia de {fmt(p.price-p.sale_price)}</div>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* PRODUCT DETAIL */}
+      {view==="product" && selProd && (
+        <div style={{ padding:"28px 32px", maxWidth:800, margin:"0 auto" }} className="fade-up">
+          <button className="btn btn-ghost" style={{ marginBottom:20 }} onClick={()=>setView("store")}>← Voltar</button>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:32 }}>
+            <img src={selProd.images_urls[0]} alt={selProd.title} style={{ width:"100%", borderRadius:12 }} />
+            <div>
+              <div style={{ fontSize:11, color:"var(--accent)", letterSpacing:1, marginBottom:8 }}>{selProd.category}</div>
+              <h2 style={{ fontFamily:"var(--font-h)", fontSize:24, fontWeight:700, marginBottom:16 }}>{selProd.title}</h2>
+              <p style={{ color:"var(--muted)", fontSize:14, lineHeight:1.6, marginBottom:20 }}>{selProd.description}</p>
+              <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:8 }}>
+                <span style={{ fontSize:32, fontWeight:800, color:"var(--accent)" }}>{fmt(selProd.sale_price||selProd.price)}</span>
+                {selProd.sale_price && <span style={{ fontSize:16, color:"var(--muted)", textDecoration:"line-through" }}>{fmt(selProd.price)}</span>}
+              </div>
+              <div style={{ fontSize:12, color:"var(--muted)", marginBottom:20 }}>Estoque: {selProd.stock_qty} un. disponíveis</div>
+              <div style={{ display:"flex", gap:10 }}>
+                <button className="btn btn-primary" style={{ flex:1, justifyContent:"center" }} onClick={()=>{addToCart(selProd);setView("cart");}}>🛒 Comprar Agora</button>
+                <button className="btn btn-ghost" onClick={()=>addToCart(selProd)}>+ Carrinho</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CART */}
+      {view==="cart" && (
+        <div style={{ padding:"28px 32px", maxWidth:640, margin:"0 auto" }} className="fade-up">
+          <button className="btn btn-ghost" style={{ marginBottom:20 }} onClick={()=>setView("store")}>← Continuar comprando</button>
+          <h2 style={{ fontFamily:"var(--font-h)", fontSize:24, marginBottom:20 }}>Seu Carrinho</h2>
+          {cart.length===0 ? (
+            <div style={{ textAlign:"center", padding:40, color:"var(--muted)" }}>Carrinho vazio</div>
+          ) : <>
+            {cart.map(item=>(
+              <div key={item.id} className="card" style={{ display:"flex", alignItems:"center", gap:16, marginBottom:12 }}>
+                <img src={item.images_urls[0]} alt={item.title} style={{ width:60, height:60, borderRadius:8, objectFit:"cover" }} />
+                <div style={{ flex:1 }}>
+                  <div style={{ fontWeight:600, fontSize:14 }}>{item.title}</div>
+                  <div style={{ color:"var(--accent)", fontWeight:700 }}>{fmt(item.sale_price||item.price)}</div>
+                </div>
+                <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                  <button className="btn btn-ghost" style={{ padding:"4px 8px" }} onClick={()=>setCart(prev=>prev.map(i=>i.id===item.id&&i.qty>1?{...i,qty:i.qty-1}:i).filter(i=>i.qty>0))}>−</button>
+                  <span style={{ fontWeight:600 }}>{item.qty}</span>
+                  <button className="btn btn-ghost" style={{ padding:"4px 8px" }} onClick={()=>setCart(prev=>prev.map(i=>i.id===item.id?{...i,qty:i.qty+1}:i))}>+</button>
+                  <button className="btn btn-danger" style={{ padding:"4px 10px", fontSize:12 }} onClick={()=>setCart(prev=>prev.filter(i=>i.id!==item.id))}>✕</button>
+                </div>
+              </div>
+            ))}
+            <div style={{ display:"flex", justifyContent:"space-between", fontWeight:700, fontSize:18, marginBottom:20, padding:"16px 0", borderTop:"1px solid var(--border)" }}>
+              <span>Total</span><span style={{ color:"var(--accent)" }}>{fmt(cartTotal)}</span>
+            </div>
+            <button className="btn btn-primary" style={{ width:"100%", justifyContent:"center", fontSize:16, padding:"14px" }} onClick={()=>{setView("checkout");setStep(1);}}>Finalizar Compra →</button>
+          </>}
+        </div>
+      )}
+
+      {/* CHECKOUT */}
+      {view==="checkout" && (
+        <div style={{ padding:"28px 32px", maxWidth:580, margin:"0 auto" }} className="fade-up">
+          <button className="btn btn-ghost" style={{ marginBottom:20 }} onClick={()=>setView("cart")}>← Voltar</button>
+          <h2 style={{ fontFamily:"var(--font-h)", fontSize:24, marginBottom:4 }}>Finalizar Compra</h2>
+          <p style={{ color:"var(--muted)", fontSize:13, marginBottom:20 }}>Preencha seus dados para entrega e emissão da nota fiscal</p>
+          <div className="steps">
+            {["Dados Pessoais","Endereço","Pagamento"].map((s,i)=>(
+              <div key={s} className={`step ${step===i+1?"active":step>i+1?"done":""}`}>{step>i+1?"✓ ":""}{s}</div>
+            ))}
+          </div>
+
+          {step===1 && <div>
+            {[["Nome Completo","name","text","Maria da Silva"],["CPF ou CNPJ","cpf","text","000.000.000-00"],["WhatsApp","phone","tel","(74) 99999-0000"]].map(([l,k,t,ph])=>(
+              <div key={k} className="form-group"><label>{l} <span style={{ color:"var(--danger)" }}>*</span></label>
+                <input className="input" type={t} placeholder={ph} value={form[k]} onChange={e=>setForm(f=>({...f,[k]:e.target.value}))} />
+              </div>
+            ))}
+            <button className="btn btn-primary" style={{ width:"100%", justifyContent:"center" }} disabled={!form.name||!form.cpf||!form.phone} onClick={()=>setStep(2)}>Próximo →</button>
+          </div>}
+
+          {step===2 && <div>
+            {[["CEP","zip","text","44900-000"],["Rua / Avenida","street","text","Rua das Flores"],["Número","number","text","22"],["Complemento","complement","text","Apto 01 (opcional)"],["Cidade","city","text","Irecê"]].map(([l,k,t,ph])=>(
+              <div key={k} className="form-group"><label>{l}</label>
+                <input className="input" type={t} placeholder={ph} value={form[k]} onChange={e=>setForm(f=>({...f,[k]:e.target.value}))} />
+              </div>
+            ))}
+            <div style={{ background:"rgba(0,212,255,.06)", borderRadius:8, padding:10, marginBottom:16, fontSize:12 }}>
+              🚚 Frete para Irecê: <strong style={{ color:"var(--success)" }}>GRÁTIS</strong> | Região: R$ 25 | Outras cidades: R$ 45
+            </div>
+            <div style={{ display:"flex", gap:10 }}>
+              <button className="btn btn-ghost" style={{ flex:1, justifyContent:"center" }} onClick={()=>setStep(1)}>← Voltar</button>
+              <button className="btn btn-primary" style={{ flex:1, justifyContent:"center" }} onClick={()=>setStep(3)}>Próximo →</button>
+            </div>
+          </div>}
+
+          {step===3 && <div>
+            <div className="card" style={{ marginBottom:16 }}>
+              <div style={{ fontWeight:600, marginBottom:12 }}>Resumo do Pedido</div>
+              {cart.map(i=>(
+                <div key={i.id} style={{ display:"flex", justifyContent:"space-between", fontSize:13, marginBottom:8 }}>
+                  <span>{i.title.split(" ").slice(0,3).join(" ")} ×{i.qty}</span>
+                  <span style={{ fontWeight:600 }}>{fmt((i.sale_price||i.price)*i.qty)}</span>
+                </div>
+              ))}
+              <div style={{ borderTop:"1px solid var(--border)", marginTop:10, paddingTop:10, display:"flex", justifyContent:"space-between", fontWeight:700 }}>
+                <span>Total</span><span style={{ color:"var(--accent)" }}>{fmt(cartTotal)}</span>
+              </div>
+            </div>
+            <div className="form-group"><label>FORMA DE PAGAMENTO</label>
+              <select className="input">
+                <option>Pix (aprovação imediata)</option>
+                <option>Cartão de Crédito</option>
+                <option>Cartão de Débito</option>
+              </select>
+            </div>
+            <div style={{ background:"rgba(34,197,94,.06)", border:"1px solid rgba(34,197,94,.2)", borderRadius:8, padding:12, fontSize:12, color:"var(--muted)", marginBottom:16 }}>
+              🔒 Seus dados estão protegidos pela LGPD. Não compartilhamos informações pessoais.
+            </div>
+            <div style={{ display:"flex", gap:10 }}>
+              <button className="btn btn-ghost" style={{ flex:1, justifyContent:"center" }} onClick={()=>setStep(2)}>← Voltar</button>
+              <button className="btn btn-primary" style={{ flex:2, justifyContent:"center", fontSize:15, padding:"13px" }} onClick={finalize}>✅ Confirmar Pedido</button>
+            </div>
+          </div>}
+        </div>
+      )}
+
+      {/* SUCCESS */}
+      {view==="success" && (
+        <div style={{ padding:"60px 32px", maxWidth:500, margin:"0 auto", textAlign:"center" }} className="fade-up">
+          <div style={{ fontSize:72, marginBottom:16, animation:"pulse 2s infinite" }}>🎉</div>
+          <h2 style={{ fontFamily:"var(--font-h)", fontSize:28, marginWeight:700, marginBottom:8 }}>Pedido Confirmado!</h2>
+          <div style={{ fontSize:18, color:"var(--accent)", fontWeight:700, marginBottom:8 }}>{orderNum}</div>
+          <p style={{ color:"var(--muted)", fontSize:14, lineHeight:1.6, marginBottom:24 }}>
+            Você receberá uma confirmação no WhatsApp informado. Nossa equipe já recebeu seu pedido e iniciará a separação em breve.
+          </p>
+          <div className="card" style={{ textAlign:"left", marginBottom:24 }}>
+            <div style={{ fontSize:11, color:"var(--muted)", marginBottom:4 }}>ENTREGAR EM</div>
+            <div style={{ fontWeight:500 }}>{form.name}</div>
+            <div style={{ fontSize:13, color:"var(--muted)" }}>{form.street}, {form.number} — {form.city}-BA</div>
+          </div>
+          <button className="btn btn-primary" style={{ width:"100%", justifyContent:"center" }} onClick={()=>{ setView("store"); setForm({ name:"", cpf:"", phone:"", zip:"", street:"", number:"", complement:"", city:"Irecê", state:"BA" }); }}>
+            🛍️ Continuar Comprando
+          </button>
+        </div>
+      )}
+
+      {toast && <Toast msg={toast} onClose={()=>setToast(null)} />}
+    </div>
+  );
+}
+
+// ─── ROOT ─────────────────────────────────────────────────────────────────────
+export default function App() {
+  const [screen, setScreen] = useState("store"); // store | login | admin
+  const [user, setUser]     = useState(null);
+
+  const handleLogin = (u) => { setUser(u); setScreen("admin"); };
+  const handleLogout = () => { setUser(null); setScreen("login"); };
+
+  return (
+    <>
+      <style>{css}</style>
+      {screen==="store" && <StorePage goToAdmin={()=>setScreen("login")} />}
+      {screen==="login" && <LoginPage onLogin={handleLogin} goToStore={()=>setScreen("store")} />}
+      {screen==="admin" && user && <AdminLayout user={user} onLogout={handleLogout} goToStore={()=>setScreen("store")} />}
+    </>
+  );
+}
